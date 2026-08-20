@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Редактировать расход — Расходы</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="icon" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card">
+    <h1>Редактировать расход</h1>
+    <p class="auth-subtitle">Измените данные и сохраните</p>
+    <form method="POST" action="/expenses/<%= expense.id %>" class="stacked-form">
+      <label>Сумма, грн
+        <input type="number" step="0.01" min="0.01" name="amount" required value="<%= expense.amount %>" />
+      </label>
+      <label>Категория
+        <select name="categoryId" required>
+          <% categories.forEach(cat => { %>
+            <option value="<%= cat.id %>" <%= cat.id === expense.category_id ? 'selected' : '' %>><%= cat.name %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label>Карта
+        <select name="cardId" required>
+          <% cards.forEach(card => { %>
+            <option value="<%= card.id %>" <%= card.id === expense.card_id ? 'selected' : '' %>><%= card.label %> •••• <%= card.last4 %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label>Дата
+        <input type="date" name="date" required value="<%= expense.expense_date %>" />
+      </label>
+      <label>Заметка (необязательно)
+        <input type="text" name="note" placeholder="Например: обед с коллегами" value="<%= expense.note || '' %>" />
+      </label>
+      <button type="submit" class="btn btn-primary btn-block">Сохранить изменения</button>
+    </form>
+    <div class="auth-footer">
+      <a href="/">Отмена</a>
+    </div>
+  </div>
+</div>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+  }
+</script>
+</body>
+</html>

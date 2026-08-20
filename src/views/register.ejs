@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Регистрация — Расходы</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="icon" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <h1>Регистрация</h1>
+    <p class="auth-subtitle">Создайте личный кабинет для учёта расходов</p>
+
+    <% if (error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/register">
+      <label>Имя
+        <input type="text" name="name" placeholder="Как к вам обращаться" />
+      </label>
+      <label>Email
+        <input type="email" name="email" required placeholder="you@example.com" />
+      </label>
+      <label>Пароль
+        <input type="password" name="password" required minlength="6" placeholder="Минимум 6 символов" />
+      </label>
+      <button type="submit" class="btn btn-primary btn-block">Создать аккаунт</button>
+    </form>
+
+    <p class="auth-footer">Уже есть аккаунт? <a href="/login">Войти</a></p>
+  </div>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+    }
+  </script>
+</body>
+</html>

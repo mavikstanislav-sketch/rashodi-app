@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Личный кабинет — Расходы</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="icon" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+</head>
+<body>
+<%
+  const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  function monthLabel(ym) {
+    const [y, m] = ym.split('-').map(Number);
+    return `${MONTH_NAMES[m - 1]} ${y}`;
+  }
+
+  const totalSpentByCat = summary.byCategory.reduce((s, c) => s + c.spent, 0);
+  let gradientParts = [];
+  let acc = 0;
+  if (totalSpentByCat > 0) {
+    for (const c of summary.byCategory) {
+      if (c.spent <= 0) continue;
+      const start = (acc / totalSpentByCat) * 360;
+      acc += c.spent;
+      const end = (acc / totalSpentByCat) * 360;
+      gradientParts.push(`${c.color} ${start}deg ${end}deg`);
+    }
+  }
+  const donutStyle = gradientParts.length
+    ? `background: conic-gradient(${gradientParts.join(', ')});`
+    : `background: #e2e8f0;`;
+
+  let statusClass = 'ok';
+  if (summary.percentUsed >= 100) statusClass = 'danger';
+  else if (summary.percentUsed >= 80) statusClass = 'warn';
+
+  function fmt(n) {
+    return new Intl.NumberFormat('uk-UA').format(Math.round(n * 100) / 100);
+  }
+%>
+<div class="page">
+  <header class="topbar">
+    <div class="brand">💰 Мои расходы</div>
+    <div class="topbar-user">
+      <span><%= user.name %></span>
+      <form method="POST" action="/logout" style="display:inline">
+        <button type="submit" class="btn btn-ghost">Выйти</button>
+      </form>
+    </div>
+  </header>
+
+  <main class="content">
+    <section class="month-nav">
+      <form method="GET" action="/" class="month-select-form">
+        <label for="month">Месяц:</label>
+        <select id="month" name="month" onchange="this.form.submit()">
+          <% availableMonths.forEach(ym => { %>
+            <option value="<%= ym %>" <%= ym === yearMonth ? 'selected' : '' %>><%= monthLabel(ym) %></option>
+          <% }) %>
+        </select>
+      </form>
+      <% if (!isCurrentMonth) { %>
+        <span class="badge">Просмотр истории</span>
+      <% } %>
+    </section>
+
+    <section class="summary-grid">
+      <div class="card stat-card">
+        <div class="stat-label">Потрачено за месяц</div>
+        <div class="stat-value"><%= fmt(summary.total) %> грн</div>
+      </div>
+
+      <div class="card stat-card status-<%= statusClass %>">
+        <div class="stat-label">Остаток бюджета</div>
+        <div class="stat-value"><%= fmt(summary.remaining) %> грн</div>
+        <div class="progress-bar">
+          <div class="progress-fill status-<%= statusClass %>" style="width: <%= summary.percentUsed %>%"></div>
+        </div>
+        <div class="stat-sub"><%= summary.percentUsed %>% от бюджета <%= fmt(summary.monthlyBudget) %> грн</div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-label">Месячный бюджет</div>
+        <form method="POST" action="/budget" class="inline-form">
+          <input type="number" step="0.01" min="0" name="monthlyBudget" value="<%= user.monthly_budget %>" />
+          <button type="submit" class="btn btn-small">Сохранить</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="two-col">
+      <div class="card">
+        <h2>По категориям</h2>
+        <div class="donut-wrap">
+          <div class="donut" style="<%= donutStyle %>"></div>
+          <ul class="legend">
+            <% summary.byCategory.forEach(c => { %>
+              <li>
+                <span class="dot" style="background: <%= c.color %>"></span>
+                <span class="legend-name"><%= c.name %></span>
+                <span class="legend-value"><%= fmt(c.spent) %> грн</span>
+              </li>
+            <% }) %>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Добавить расход</h2>
+        <form method="POST" action="/expenses" class="stacked-form">
+          <label>Сумма, грн
+            <input type="number" step="0.01" min="0.01" name="amount" required placeholder="0.00" />
+          </label>
+          <label>Категория
+            <select name="categoryId" required>
+              <% categories.forEach(cat => { %>
+                <option value="<%= cat.id %>"><%= cat.name %></option>
+              <% }) %>
+            </select>
+          </label>
+          <label>Карта
+            <select name="cardId" required>
+              <% cards.forEach(card => { %>
+                <option value="<%= card.id %>"><%= card.label %> •••• <%= card.last4 %></option>
+              <% }) %>
+            </select>
+          </label>
+          <label>Дата
+            <input type="date" name="date" required value="<%= new Date().toISOString().slice(0,10) %>" />
+          </label>
+          <label>Заметка (необязательно)
+            <input type="text" name="note" placeholder="Например: обед с коллегами" />
+          </label>
+          <button type="submit" class="btn btn-primary">Добавить расход</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="card">
+      <details>
+        <summary>Управление картами (<%= cards.length %>)</summary>
+        <ul class="cards-list">
+          <% cards.forEach(card => { %>
+            <li><%= card.label %> — •••• <%= card.last4 %></li>
+          <% }) %>
+        </ul>
+        <form method="POST" action="/cards" class="inline-form">
+          <input type="text" name="label" placeholder="Название карты (напр. Основная)" required />
+          <input type="text" name="cardNumber" placeholder="Номер карты" required maxlength="19" />
+          <button type="submit" class="btn btn-small">Добавить карту</button>
+        </form>
+        <p class="hint">В целях безопасности хранятся только последние 4 цифры номера карты.</p>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Расходы за <%= monthLabel(yearMonth) %></h2>
+      <% if (expenses.length === 0) { %>
+        <p class="empty-state">Расходов за этот месяц пока нет.</p>
+      <% } else { %>
+        <div class="table-scroll">
+          <table class="expenses-table">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Категория</th>
+                <th>Карта</th>
+                <th>Заметка</th>
+                <th class="text-right">Сумма</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% expenses.forEach(e => { %>
+                <tr>
+                  <td><%= e.expense_date %></td>
+                  <td><%= e.category_name %></td>
+                  <td><%= e.card_label %> •••• <%= e.card_last4 %></td>
+                  <td><%= e.note || '—' %></td>
+                  <td class="text-right"><%= fmt(e.amount) %> грн</td>
+                  <td class="row-actions">
+                    <a href="/expenses/<%= e.id %>/edit" class="btn btn-small">Изменить</a>
+                    <form method="POST" action="/expenses/<%= e.id %>/delete" onsubmit="return confirm('Удалить этот расход?');" style="display:inline">
+                      <button type="submit" class="btn btn-small btn-danger">Удалить</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+</div>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+  }
+</script>
+</body>
+</html>
