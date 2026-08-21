@@ -1,12 +1,26 @@
 const bcrypt = require('bcryptjs');
 const models = require('../models');
 
+function isUniqueViolation(err) {
+  return /UNIQUE constraint failed/i.test(err?.message || '');
+}
+
 async function seedDemo() {
   const existing = await models.getUserByEmail('demo@example.com');
   if (existing) return;
 
   const passwordHash = bcrypt.hashSync('demo1234', 10);
-  const userId = await models.createUser('demo@example.com', passwordHash, 'Демо Пользователь', 50000);
+  let userId;
+  try {
+    userId = await models.createUser('demo@example.com', passwordHash, 'Демо Пользователь', 50000);
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      // Serverless cold start race: another instance created the demo user
+      // between our check above and this insert. Nothing left to do here.
+      return;
+    }
+    throw err;
+  }
 
   const cardId = await models.addCard(userId, 'Основная карта', '4521');
   const cardId2 = await models.addCard(userId, 'Зарплатная карта', '7788');
