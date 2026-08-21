@@ -1,6 +1,7 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const models = require('../models');
+const { buildInsights, prevYearMonth } = require('../insights');
 const asyncHandler = require('../utils/asyncHandler');
 
 const router = express.Router();
@@ -14,24 +15,30 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
   const user = await models.getUserById(req.session.userId);
   const yearMonth = req.query.month || currentYearMonth();
 
-  const [summary, expenses, cards, categories, availableMonths] = await Promise.all([
+  const isCurrentMonth = yearMonth === currentYearMonth();
+
+  const [summary, expenses, cards, categories, availableMonths, prevMonthTotal] = await Promise.all([
     models.getMonthSummary(user.id, yearMonth, user.monthly_budget),
     models.getExpensesForMonth(user.id, yearMonth),
     models.getCardsByUser(user.id),
     models.getCategories(user.id),
     models.getAvailableMonths(user.id),
+    models.getMonthTotal(user.id, prevYearMonth(yearMonth)),
   ]);
   if (!availableMonths.includes(currentYearMonth())) availableMonths.unshift(currentYearMonth());
+
+  const insights = buildInsights({ summary, isCurrentMonth, prevMonthTotal });
 
   res.render('dashboard', {
     user,
     summary,
+    insights,
     expenses,
     cards,
     categories,
     yearMonth,
     availableMonths: [...new Set(availableMonths)].sort().reverse(),
-    isCurrentMonth: yearMonth === currentYearMonth(),
+    isCurrentMonth,
   });
 }));
 

@@ -134,6 +134,15 @@ async function deleteExpense(userId, id) {
   return rowsAffected > 0;
 }
 
+async function getMonthTotal(userId, yearMonth) {
+  const { start, end } = monthBounds(yearMonth);
+  const { rows } = await db.execute({
+    sql: 'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE user_id = ? AND expense_date BETWEEN ? AND ?',
+    args: [userId, start, end],
+  });
+  return rows[0].total;
+}
+
 async function getAvailableMonths(userId) {
   const { rows } = await db.execute({
     sql: `SELECT DISTINCT substr(expense_date, 1, 7) as ym
@@ -157,6 +166,7 @@ module.exports = {
   addCard,
   addExpense,
   getMonthSummary,
+  getMonthTotal,
   getExpensesForMonth,
   getExpenseById,
   updateExpense,

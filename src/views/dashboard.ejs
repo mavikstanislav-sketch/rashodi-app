@@ -76,6 +76,17 @@
       </div>
     </section>
 
+    <% if (insights && insights.length) { %>
+      <section class="card insights-card">
+        <h2>🤖 Аналіз витрат</h2>
+        <ul class="insights-list">
+          <% insights.forEach(text => { %>
+            <li><%= text %></li>
+          <% }) %>
+        </ul>
+      </section>
+    <% } %>
+
     <section class="two-col">
       <div class="card">
         <h2>По категориям</h2>
