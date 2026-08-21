@@ -18,7 +18,7 @@ router.get('/', requireAuth, asyncHandler(async (req, res) => {
     models.getMonthSummary(user.id, yearMonth, user.monthly_budget),
     models.getExpensesForMonth(user.id, yearMonth),
     models.getCardsByUser(user.id),
-    models.getCategories(),
+    models.getCategories(user.id),
     models.getAvailableMonths(user.id),
   ]);
   if (!availableMonths.includes(currentYearMonth())) availableMonths.unshift(currentYearMonth());
@@ -61,7 +61,7 @@ router.get('/expenses/:id/edit', requireAuth, asyncHandler(async (req, res) => {
 
   const [cards, categories] = await Promise.all([
     models.getCardsByUser(req.session.userId),
-    models.getCategories(),
+    models.getCategories(req.session.userId),
   ]);
   res.render('edit-expense', { expense, cards, categories });
 }));
@@ -104,6 +104,18 @@ router.post('/cards', requireAuth, asyncHandler(async (req, res) => {
   }
 
   await models.addCard(req.session.userId, (label || '').trim(), digits);
+  res.redirect('/');
+}));
+
+router.post('/categories', requireAuth, asyncHandler(async (req, res) => {
+  const { name, icon } = req.body;
+  const trimmedName = (name || '').trim();
+
+  if (!trimmedName) {
+    return res.redirect('/');
+  }
+
+  await models.addCategory(req.session.userId, trimmedName, (icon || '').trim());
   res.redirect('/');
 }));
 

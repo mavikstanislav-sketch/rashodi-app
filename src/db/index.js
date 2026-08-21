@@ -62,13 +62,35 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 `;
 
-const FIXED_CATEGORIES = ['Заправка', 'Заведения', 'Магазины продуктовые'];
+const FIXED_CATEGORIES = [
+  { name: 'Заправка', icon: '⛽' },
+  { name: 'Заведения', icon: '🍽️' },
+  { name: 'Магазины продуктовые', icon: '🛒' },
+];
+
+async function ensureColumn(table, column, type) {
+  const { rows } = await db.execute(`PRAGMA table_info(${table})`);
+  if (!rows.some((r) => r.name === column)) {
+    await db.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
+}
 
 async function init() {
   await db.execute('PRAGMA foreign_keys = ON;');
   await db.executeMultiple(SCHEMA);
-  for (const name of FIXED_CATEGORIES) {
-    await db.execute({ sql: 'INSERT OR IGNORE INTO categories (name) VALUES (?)', args: [name] });
+
+  // Added after the initial release — ensureColumn is a no-op once these
+  // already exist, so this stays safe to run on every cold start.
+  await ensureColumn('categories', 'icon', 'TEXT');
+  await ensureColumn('categories', 'user_id', 'INTEGER');
+
+  for (const { name, icon } of FIXED_CATEGORIES) {
+    await db.execute({ sql: 'INSERT OR IGNORE INTO categories (name, icon) VALUES (?, ?)', args: [name, icon] });
+    // Backfill icons for categories created before this column existed.
+    await db.execute({
+      sql: 'UPDATE categories SET icon = ? WHERE name = ? AND icon IS NULL',
+      args: [icon, name],
+    });
   }
 }
 

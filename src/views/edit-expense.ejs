@@ -22,7 +22,7 @@
       <label>Категория
         <select name="categoryId" required>
           <% categories.forEach(cat => { %>
-            <option value="<%= cat.id %>" <%= cat.id === expense.category_id ? 'selected' : '' %>><%= cat.name %></option>
+            <option value="<%= cat.id %>" <%= cat.id === expense.category_id ? 'selected' : '' %>><%= cat.icon || '🏷️' %> <%= cat.name %></option>
           <% }) %>
         </select>
       </label>

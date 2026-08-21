@@ -18,22 +18,6 @@
     return `${MONTH_NAMES[m - 1]} ${y}`;
   }
 
-  const totalSpentByCat = summary.byCategory.reduce((s, c) => s + c.spent, 0);
-  let gradientParts = [];
-  let acc = 0;
-  if (totalSpentByCat > 0) {
-    for (const c of summary.byCategory) {
-      if (c.spent <= 0) continue;
-      const start = (acc / totalSpentByCat) * 360;
-      acc += c.spent;
-      const end = (acc / totalSpentByCat) * 360;
-      gradientParts.push(`${c.color} ${start}deg ${end}deg`);
-    }
-  }
-  const donutStyle = gradientParts.length
-    ? `background: conic-gradient(${gradientParts.join(', ')});`
-    : `background: #e2e8f0;`;
-
   let statusClass = 'ok';
   if (summary.percentUsed >= 100) statusClass = 'danger';
   else if (summary.percentUsed >= 80) statusClass = 'warn';
@@ -95,18 +79,23 @@
     <section class="two-col">
       <div class="card">
         <h2>По категориям</h2>
-        <div class="donut-wrap">
-          <div class="donut" style="<%= donutStyle %>"></div>
-          <ul class="legend">
-            <% summary.byCategory.forEach(c => { %>
-              <li>
-                <span class="dot" style="background: <%= c.color %>"></span>
-                <span class="legend-name"><%= c.name %></span>
-                <span class="legend-value"><%= fmt(c.spent) %> грн</span>
-              </li>
-            <% }) %>
-          </ul>
+        <div class="category-cards">
+          <% summary.byCategory.forEach(c => { %>
+            <div class="category-tile">
+              <div class="category-icon"><%= c.icon || '🏷️' %></div>
+              <div class="category-name"><%= c.name %></div>
+              <div class="category-amount"><%= fmt(c.spent) %> грн</div>
+            </div>
+          <% }) %>
         </div>
+        <details class="add-category">
+          <summary>Добавить категорию</summary>
+          <form method="POST" action="/categories" class="inline-form">
+            <input type="text" name="icon" placeholder="Эмодзи" maxlength="4" class="icon-input" />
+            <input type="text" name="name" placeholder="Название категории" required />
+            <button type="submit" class="btn btn-small">Добавить</button>
+          </form>
+        </details>
       </div>
 
       <div class="card">
@@ -118,7 +107,7 @@
           <label>Категория
             <select name="categoryId" required>
               <% categories.forEach(cat => { %>
-                <option value="<%= cat.id %>"><%= cat.name %></option>
+                <option value="<%= cat.id %>"><%= cat.icon || '🏷️' %> <%= cat.name %></option>
               <% }) %>
             </select>
           </label>

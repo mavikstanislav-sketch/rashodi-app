@@ -1,11 +1,5 @@
 const db = require('./db');
 
-const CATEGORY_COLORS = {
-  'Заправка': '#f59e0b',
-  'Заведения': '#ec4899',
-  'Магазины продуктовые': '#22c55e',
-};
-
 async function getUserById(id) {
   const { rows } = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [id] });
   return rows[0] || null;
@@ -24,9 +18,20 @@ async function createUser(email, passwordHash, name, monthlyBudget = 0) {
   return Number(lastInsertRowid);
 }
 
-async function getCategories() {
-  const { rows } = await db.execute('SELECT id, name FROM categories ORDER BY id');
+async function getCategories(userId) {
+  const { rows } = await db.execute({
+    sql: 'SELECT id, name, icon FROM categories WHERE user_id IS NULL OR user_id = ? ORDER BY id',
+    args: [userId],
+  });
   return rows;
+}
+
+async function addCategory(userId, name, icon) {
+  const { lastInsertRowid } = await db.execute({
+    sql: 'INSERT INTO categories (name, icon, user_id) VALUES (?, ?, ?)',
+    args: [name, icon || '🏷️', userId],
+  });
+  return Number(lastInsertRowid);
 }
 
 async function getCardsByUser(userId) {
@@ -73,17 +78,15 @@ async function getMonthSummary(userId, yearMonth, monthlyBudget) {
   const total = totalResult.rows[0].total;
 
   const byCategoryResult = await db.execute({
-    sql: `SELECT c.id, c.name, COALESCE(SUM(e.amount), 0) as spent
+    sql: `SELECT c.id, c.name, c.icon, COALESCE(SUM(e.amount), 0) as spent
           FROM categories c
           LEFT JOIN expenses e ON e.category_id = c.id AND e.user_id = ? AND e.expense_date BETWEEN ? AND ?
-          GROUP BY c.id, c.name
+          WHERE c.user_id IS NULL OR c.user_id = ?
+          GROUP BY c.id, c.name, c.icon
           ORDER BY c.id`,
-    args: [userId, start, end],
+    args: [userId, start, end, userId],
   });
-  const byCategory = byCategoryResult.rows.map((row) => ({
-    ...row,
-    color: CATEGORY_COLORS[row.name] || '#94a3b8',
-  }));
+  const byCategory = byCategoryResult.rows;
 
   const remaining = monthlyBudget - total;
   const percentUsed = monthlyBudget > 0 ? Math.min(100, Math.round((total / monthlyBudget) * 100)) : 0;
@@ -145,11 +148,11 @@ async function updateBudget(userId, amount) {
 }
 
 module.exports = {
-  CATEGORY_COLORS,
   getUserById,
   getUserByEmail,
   createUser,
   getCategories,
+  addCategory,
   getCardsByUser,
   addCard,
   addExpense,

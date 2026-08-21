@@ -25,7 +25,7 @@ async function seedDemo() {
   const cardId = await models.addCard(userId, 'Основная карта', '4521');
   const cardId2 = await models.addCard(userId, 'Зарплатная карта', '7788');
 
-  const categories = await models.getCategories();
+  const categories = await models.getCategories(userId);
   const catId = (name) => categories.find((c) => c.name === name).id;
 
   function dateStr(y, m, d) {
