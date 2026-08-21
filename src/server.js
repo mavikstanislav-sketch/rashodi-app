@@ -12,15 +12,14 @@ const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
 if (isProduction && !process.env.SESSION_SECRET) {
-  console.error('SESSION_SECRET is not set. Set it in the hosting environment before going to production.');
-  process.exit(1);
+  throw new Error('SESSION_SECRET is not set. Set it in the hosting environment before going to production.');
 }
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 if (isProduction) {
-  // Render/Railway/Fly etc. terminate TLS at a proxy in front of the app;
+  // Render/Vercel/Fly etc. terminate TLS at a proxy in front of the app;
   // trust proxy so secure cookies and req.protocol reflect the real request.
   app.set('trust proxy', 1);
 }
@@ -44,6 +43,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// On serverless hosts (Vercel) each cold start re-runs this module, so schema
+// creation/demo seeding must finish before any route touches the DB. Locally
+// and on always-on hosts (Render) this resolves once at startup, same as before.
+const initPromise = db.init().then(() => seedDemo());
+
+app.use((req, res, next) => {
+  initPromise.then(() => next(), next);
+});
+
 app.use('/', require('./routes/auth'));
 app.use('/', require('./routes/dashboard'));
 
@@ -52,17 +60,11 @@ app.use((err, req, res, next) => {
   res.status(500).send('Внутренняя ошибка сервера');
 });
 
-async function main() {
-  await db.init();
-  await seedDemo();
-
+if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Rashodi app listening on http://localhost:${PORT}`);
     console.log('Демо-вход: demo@example.com / demo1234');
   });
 }
 
-main().catch((err) => {
-  console.error('Не удалось запустить сервер:', err);
-  process.exit(1);
-});
+module.exports = app;
