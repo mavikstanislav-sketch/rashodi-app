@@ -52,6 +52,14 @@ const SCHEMA = `
   );
 
   CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses(user_id, expense_date);
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    sid TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 `;
 
 const FIXED_CATEGORIES = ['Заправка', 'Заведения', 'Магазины продуктовые'];

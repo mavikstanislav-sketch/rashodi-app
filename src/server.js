@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const db = require('./db');
 const seedDemo = require('./db/seed');
+const TursoSessionStore = require('./sessionStore');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,8 +27,20 @@ if (isProduction) {
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// On serverless hosts (Vercel) each cold start re-runs this module, so schema
+// creation/demo seeding must finish before anything touches the DB — including
+// the session middleware below, which reads/writes the sessions table.
+// Locally and on always-on hosts (Render) this resolves once at startup.
+const initPromise = db.init().then(() => seedDemo());
+
+app.use((req, res, next) => {
+  initPromise.then(() => next(), next);
+});
+
 app.use(
   session({
+    store: new TursoSessionStore(),
     secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
     resave: false,
     saveUninitialized: false,
@@ -41,15 +54,6 @@ app.use(
 app.use((req, res, next) => {
   res.locals.currentPath = req.path;
   next();
-});
-
-// On serverless hosts (Vercel) each cold start re-runs this module, so schema
-// creation/demo seeding must finish before any route touches the DB. Locally
-// and on always-on hosts (Render) this resolves once at startup, same as before.
-const initPromise = db.init().then(() => seedDemo());
-
-app.use((req, res, next) => {
-  initPromise.then(() => next(), next);
 });
 
 app.use('/', require('./routes/auth'));
